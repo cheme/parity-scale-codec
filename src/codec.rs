@@ -910,6 +910,13 @@ impl<T: Decode> Decode for Vec<T> {
 	}
 }
 
+/// Access to an encoded slice without copy.
+pub fn slice_from_encoded_vec_u8(input: &[u8]) -> Result<&[u8], Error> {
+	let input = &mut &input[..];
+	let size = <Compact<u32>>::decode(input)?.0 as usize;
+	Ok(&input[..size])
+}
+
 impl<T: Decode> DecodeContainer for Vec<T> {
 	type ItemType = T;
 

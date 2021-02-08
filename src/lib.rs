@@ -279,7 +279,7 @@ mod iter_slice;
 pub use self::error::Error;
 pub use self::codec::{
 	Input, Output, Decode, Encode, Codec, EncodeAsRef, WrapperTypeEncode, WrapperTypeDecode,
-	OptionBool, DecodeLength, FullCodec, FullEncode,
+	OptionBool, DecodeLength, FullCodec, FullEncode, slice_from_encoded_vec_u8,
 };
 #[cfg(feature = "std")]
 pub use self::codec::IoReader;
