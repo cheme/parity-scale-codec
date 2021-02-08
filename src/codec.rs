@@ -48,7 +48,7 @@ use crate::alloc::{
 };
 use crate::compact::Compact;
 use crate::encode_like::EncodeLike;
-use crate::Error;
+use crate::{Error, DecodeContainer, SlicesIterator};
 
 pub(crate) const MAX_PREALLOCATION: usize = 4 * 1024;
 const A_BILLION: u32 = 1_000_000_000;
@@ -292,6 +292,14 @@ pub trait Decode: Sized {
 	/// NOTE: A type with a fixed encoded size may return `None`.
 	fn encoded_fixed_size() -> Option<usize> {
 		None
+	}
+
+	/// Get encoded size from a given slice input.
+	fn encoded_size(input: &[u8]) -> Result<usize, Error> {
+		let input = &mut &input[..];
+		let initial_len = input.len();
+		let _ = Self::decode(input)?;
+		Ok(initial_len - input.len())
 	}
 }
 
@@ -884,6 +892,32 @@ impl<T: Decode> Decode for Vec<T> {
 			decode_vec_with_len(input, len as usize)
 		})
 	}
+
+	fn encoded_size(input: &[u8]) -> Result<usize, Error> {
+		let initial_len = input.len();
+		let input = &mut &input[..];
+		let size = <Compact<u32>>::decode(input)?.0 as usize;
+		if let Some(fix_size) = T::encoded_fixed_size() {
+			Ok(initial_len - input.len() + size * fix_size)
+		} else {
+			let enc_size = initial_len - input.len();
+			let mut len = 0;
+			for _ in 0..size {
+				len += T::encoded_size(&mut &input[len..])?;
+			}
+			Ok(enc_size + len)
+		}
+	}
+}
+
+impl<T: Decode> DecodeContainer for Vec<T> {
+	type ItemType = T;
+
+	fn slice_iterator(encoded: &[u8]) -> Result<SlicesIterator<T>, Error> {
+		let input = &mut &encoded[..];
+		let size = <Compact<u32>>::decode(input)?.0 as usize;
+		Ok(SlicesIterator::<T>::new(&input[..], Some(size)))
+	}
 }
 
 macro_rules! impl_codec_through_iterator {
@@ -1171,6 +1205,18 @@ macro_rules! impl_one_byte {
 
 		impl Decode for $t {
 			const TYPE_INFO: TypeInfo = TypeInfo::$ty_info;
+
+			fn encoded_fixed_size() -> Option<usize> {
+				Some(1)
+			}
+
+			fn encoded_size(input: &[u8]) -> Result<usize, Error> {
+				if input.len() > 0 {
+					Ok(1)
+				} else {
+					Err("Empty input".into())
+				}
+			}
 
 			fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
 				Ok(input.read_byte()? as $t)

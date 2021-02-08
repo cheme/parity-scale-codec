@@ -274,6 +274,7 @@ mod depth_limit;
 mod encode_append;
 mod encode_like;
 mod error;
+mod iter_slice;
 
 pub use self::error::Error;
 pub use self::codec::{
@@ -289,3 +290,4 @@ pub use self::decode_all::DecodeAll;
 pub use self::depth_limit::DecodeLimit;
 pub use self::encode_append::EncodeAppend;
 pub use self::encode_like::{EncodeLike, Ref};
+pub use self::iter_slice::{DecodeContainer, SlicesIterator};
